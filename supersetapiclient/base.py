@@ -21,8 +21,15 @@ from supersetapiclient.exceptions import BadRequestError, ComplexBadRequestError
 logger = logging.getLogger(__name__)
 
 
-def json_field():
-    return dataclasses.field(default=None, repr=False)
+# def json_field():
+#     return dataclasses.field(default=None, repr=False)
+
+def json_field(default=None, default_factory=None, **kwargs):
+    if default is not None and default_factory is not None:
+        raise ValueError("cannot specify both default and default_factory")
+    if default_factory is not None:
+        default = default_factory()  # Instantiate the factory function
+    return dataclasses.field(default=default, **kwargs)
 
 
 def default_string():
@@ -221,8 +228,9 @@ class ObjectFactories:
 
     def add(self, obj) -> int:
         """Create an object on remote."""
-
         o = obj.to_json(columns=self.add_columns)
+        print("O*******", o)
+        print("self.base_url*******", self.base_url)
         response = self.client.post(self.base_url, json=o)
         raise_for_status(response)
         obj.id = response.json().get("id")

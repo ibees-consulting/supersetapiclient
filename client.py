@@ -12,13 +12,13 @@ import requests.adapters
 import requests.exceptions
 import requests_oauthlib
 
-from .base import raise_for_status
-from .charts import Charts
-from .dashboards import Dashboards
-from .databases import Databases
-from .datasets import Datasets
-from .exceptions import QueryLimitReached
-from .saved_queries import SavedQueries
+from supersetapiclient.base import raise_for_status
+from supersetapiclient.charts import Charts
+from supersetapiclient.dashboards import Dashboards
+from supersetapiclient.databases import Databases
+from supersetapiclient.datasets import Datasets
+from supersetapiclient.exceptions import QueryLimitReached
+from supersetapiclient.saved_queries import SavedQueries
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +139,8 @@ class SupersetClient:
             tmp_token = {"access_token": refresh_token}
 
             # Create a new session to avoid messing up the current session
-            refresh_r = requests_oauthlib.OAuth2Session(token=tmp_token).post(self.refresh_endpoint)
+            refresh_r = requests_oauthlib.OAuth2Session(
+                token=tmp_token).post(self.refresh_endpoint)
             raise_for_status(refresh_r)
 
             new_token = refresh_r.json()

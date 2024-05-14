@@ -16,16 +16,13 @@ from typing import List, Union
 import yaml
 from requests import HTTPError
 
-from .exceptions import BadRequestError, ComplexBadRequestError, MultipleFound, NotFound
+from supersetapiclient.exceptions import BadRequestError, ComplexBadRequestError, MultipleFound, NotFound
 
 logger = logging.getLogger(__name__)
 
 
 # def json_field():
 #     return dataclasses.field(default=None, repr=False)
-
-def json_field(default=None):
-    return dataclasses.field(default_factory=lambda: default)
 
 
 def default_string():
@@ -36,19 +33,18 @@ def raise_for_status(response):
     try:
         response.raise_for_status()
     except HTTPError as e:
-        error_content = {}
+        # Attempt to propagate the server error message
         try:
-            error_content = response.json()
-            logger.error("HTTPError raised: %s", error_content)
-        except ValueError:  # includes simplejson.decoder.JSONDecodeError
-            logger.error("Non-JSON response received: %s", response.text)
-        
-        if 'message' in error_content:
-            raise BadRequestError(e, request=e.request, response=e.response, message=error_content['message'])
-        elif 'errors' in error_content:
-            raise ComplexBadRequestError(e, request=e.request, response=e.response, errors=error_content['errors'])
-        else:
-            raise
+            error_msg = response.json()["message"]
+        except Exception:
+            try:
+                errors = response.json()["errors"]
+            except Exception:
+                raise e
+            raise ComplexBadRequestError(
+                *e.args, request=e.request, response=e.response, errors=errors) from None
+        raise BadRequestError(*e.args, request=e.request,
+                              response=e.response, message=error_msg) from None
 
 
 class Object:
@@ -143,7 +139,8 @@ class ObjectFactories:
     @cached_property
     def _infos(self):
         # Get infos
-        response = self.client.get(self.info_url, params={"q": json.dumps(self._INFO_QUERY)})
+        response = self.client.get(self.info_url, params={
+                                   "q": json.dumps(self._INFO_QUERY)})
 
         raise_for_status(response)
         return response.json()
@@ -238,7 +235,8 @@ class ObjectFactories:
     def export(self, ids: List[int], path: Union[Path, str]) -> None:
         """Export object into an importable file"""
         ids_array = ",".join([str(i) for i in ids])
-        response = self.client.get(self.export_url, params={"q": f"[{ids_array}]"})
+        response = self.client.get(self.export_url, params={
+                                   "q": f"[{ids_array}]"})
 
         raise_for_status(response)
 
@@ -280,7 +278,8 @@ class ObjectFactories:
         following format: {"MyDatabase": "my_password"}
         """
         data = {"overwrite": json.dumps(overwrite)}
-        passwords = {f"databases/{db}.yaml": pwd for db, pwd in (passwords or {}).items()}
+        passwords = {f"databases/{db}.yaml": pwd for db,
+                     pwd in (passwords or {}).items()}
         file_name = os.path.split(file_path)[-1]
         file_ext = os.path.splitext(file_name)[-1].lstrip(".").lower()
         with open(file_path, "rb") as f:

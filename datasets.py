@@ -2,7 +2,7 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
-from .base import Object, ObjectFactories
+from supersetapiclient.base import Object, ObjectFactories
 
 
 @dataclass
